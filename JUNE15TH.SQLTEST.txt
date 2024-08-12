@@ -1,0 +1,229 @@
+1.) Display Project_name, start_date, end_Date, duration_in_months, duration_in_weeks, duration_in_days for all the projects which belongs to Manufacturing industry.
+SELECT
+    p.PROJ_NAME AS Project_name,
+    p.PROJ_START AS Start_date,
+    p.PROJ_END_DATE AS End_date,
+    MONTHS_BETWEEN(p.PROJ_END_DATE, p.PROJ_START) AS duration_in_months,
+    FLOOR((p.PROJ_END_DATE - p.PROJ_START) / 7) AS duration_in_weeks,
+    p.PROJ_END_DATE - p.PROJ_START AS duration_in_days
+FROM 
+    Project p
+INNER JOIN 
+    Client c ON p.CLIENT_ID = c.CLIENT_ID
+WHERE 
+    c.CLIENT_INDUSTRY = 'Manufacturing';
+
+
+
+2.Display the Client who has the maximum number of projects with us.
+
+
+ SELECT
+    c.CLIENT_ID,
+    c.CLIENT_NAME,
+    COUNT(p.PROJ_ID) AS num_projects
+FROM
+    Client c
+INNER JOIN
+    Project p ON c.CLIENT_ID = p.CLIENT_ID
+GROUP BY
+    c.CLIENT_ID, c.CLIENT_NAME
+ORDER BY
+    num_projects DESC 
+    fetch first 1 row only
+
+
+3. Display the client name, project name, proj_estimated_rev. Consider only the projects which has the maximum estimated revenue with each client
+
+SELECT
+    c.CLIENT_NAME,
+    p.PROJ_NAME AS Project_name,
+    p.PROJ_ESTIMATED_REV
+FROM
+    Client c
+INNER JOIN
+    Project p ON c.CLIENT_ID = p.CLIENT_ID
+WHERE
+    (p.CLIENT_ID, p.PROJ_ESTIMATED_REV) IN (
+        SELECT 
+            p1.CLIENT_ID,
+            MAX(p1.PROJ_ESTIMATED_REV) AS max_estimated_rev
+        FROM 
+            Project p1
+        GROUP BY 
+            p1.CLIENT_ID
+    );
+
+4. Display the technology desc, project name and related client name for the Full Stack Development technology
+
+SELECT
+    t.TECH_DESC AS Technology_desc,
+    p.PROJ_NAME AS Project_name,
+    c.CLIENT_NAME AS Client_name
+FROM
+    Technology t
+INNER JOIN
+    project_tech pt ON t.TECH_ID = pt.TECH_ID
+INNER JOIN
+    Project p ON pt.PROJ_ID = p.PROJ_ID
+INNER JOIN
+    Client c ON p.CLIENT_ID = c.CLIENT_ID
+WHERE
+    t.TECH_DESC = 'Full Stack Development';
+
+
+5). Find all the project names, client name which are active as of now. If todays date is between start date and end date of a project then its considered as active.
+
+SELECT
+    p.PROJ_NAME AS Project_name,
+    c.CLIENT_NAME AS Client_name
+FROM
+    Project p
+INNER JOIN
+    Client c ON p.CLIENT_ID = c.CLIENT_ID
+WHERE
+    SYSDATE BETWEEN p.PROJ_START AND p.PROJ_END_DATE;
+
+6.Find all the projects which belongs to Zoho ERP client
+
+SELECT
+    PROJ_ID,
+    PROJ_CODE,
+    PROJ_NAME,
+    PROJ_START,
+    PROJ_END_DATE,
+    PROJ_DESC,
+    PROJ_ESTIMATED_REV
+FROM
+    Project
+WHERE
+    CLIENT_ID = (SELECT CLIENT_ID FROM Client WHERE CLIENT_NAME = 'Zoho ERP');
+
+
+7.Find the client name, project name , expected revenue from Manufacturing or Healthcare industry
+SELECT
+    c.CLIENT_NAME AS Client_name,
+    p.PROJ_NAME AS Project_name,
+    p.PROJ_ESTIMATED_REV AS Expected_revenue
+FROM
+    Client c
+INNER JOIN
+    Project p ON c.CLIENT_ID = p.CLIENT_ID
+WHERE
+    c.CLIENT_INDUSTRY IN ('Manufacturing', 'Healthcare');
+
+
+==========================================================================================================================================================
+1. Department Name, Location, Employee Name, Date of Join, Years of Exp in our company, Date of Birth, Age, Job Role, Job description, Gender (Female if F, Male if M)
+
+SELECT 
+    d.DEPT_NAME AS Department_Name,
+    d.DEPT_LOC AS Department_Location,
+    e.EMP_NAME AS Employee_Name,
+    e.EMP_DOJ AS Date_of_Joining,
+    MONTHS_BETWEEN(SYSDATE, e.EMP_DOJ) / 12 AS Years_of_Experience,
+    e.EMP_DOB AS Date_of_Birth,
+    TRUNC(MONTHS_BETWEEN(SYSDATE, e.EMP_DOB) / 12) AS Age,
+    j.JOB_ROLE AS Job_Role,
+    j.JOB_DESC AS Job_Description,
+    CASE
+        WHEN e.GENDER = 'F' THEN 'Female'
+        WHEN e.GENDER = 'M' THEN 'Male'
+        ELSE 'Other'
+    END AS Gender
+FROM 
+    Employee e
+    INNER JOIN Dept d ON e.DEPT_ID = d.DEPT_ID
+    INNER JOIN Jobs j ON e.JOB_ID = j.JOB_ID;
+
+2. Display Department Name, Number of Employees and Number of unique jobs we have in the department
+SELECT 
+    d.DEPT_NAME AS Department_Name,
+    COUNT(DISTINCT e.EMP_ID) AS Number_of_Employees,
+    COUNT(DISTINCT e.JOB_ID) AS Number_of_Unique_Jobs
+FROM 
+    Dept d
+LEFT JOIN 
+    Employee e ON d.DEPT_ID = e.DEPT_ID
+GROUP BY 
+    d.DEPT_NAME;
+
+3). Display Department Names, Employee Name, Job Desc to all female employees whose salary is greater than employee name RAMA
+
+SELECT 
+    d.DEPT_NAME AS Department_Name,
+    e.EMP_NAME AS Employee_Name,
+    j.JOB_DESC AS Job_Description
+FROM 
+    Employee e
+inner JOIN 
+    Dept d ON e.DEPT_ID = d.DEPT_ID
+INNER JOIN 
+    Jobs j ON e.JOB_ID = j.JOB_ID
+WHERE 
+    e.GENDER = 'F' -- Select only female employees
+    AND e.EMP_SAL > (SELECT EMP_SAL FROM Employee WHERE EMP_NAME = 'RAMA') 
+
+4. Display Department name, employee name, emp ctc, dept total ctc, company total ctc
+SELECT 
+    d.DEPT_NAME AS Department_Name,
+    e.EMP_NAME AS Employee_Name,
+    e.EMP_SAL AS Emp_CTC,
+    SUM(e.EMP_SAL) OVER (PARTITION BY d.DEPT_ID) AS Dept_Total_CTC,
+    SUM(e.EMP_SAL) OVER () AS Company_Total_CTC
+FROM 
+    Employee e
+inner JOIN 
+    Dept d ON e.DEPT_ID = d.DEPT_ID;
+
+5.Display department name, emp_name. Display all the departments irrespective of employee exists or not. Display all the employee_namesirrespective of department is associated or not. If there is no employee against a department display NO EMPLOYEE as the value, similarlyif there is no department associated to employee then display NO DEPT ASSOCIATED instead of null values
+
+
+NOT UNDERDTANDING CLEARLY 
+SELECT 
+    COALESCE(d.DEPT_NAME, 'NO DEPT ASSOCIATED') AS Department_Name,
+    COALESCE(e.EMP_NAME, 'NO EMPLOYEE') AS Employee_Name
+FROM 
+    Department d
+FULL OUTER JOIN 
+    Employee e ON d.DEPT_ID = e.DEPT_ID
+ORDER BY 
+    Department_Name, Employee_Name;
+
+
+6.Display jobs where we have zero employees
+SELECT j.JOB_ROLE AS Job_Name
+FROM Jobs j
+WHERE NOT EXISTS (
+    SELECT *
+    FROM Employee e
+    WHERE e.JOB_ID = j.JOB_ID
+);
+
+
+7.Display the job which has highest number of employees.
+SELECT j.JOB_ROLE AS Job_Name,
+       COUNT(*) AS Employee_Count
+FROM Employee e
+INNER JOIN Jobs j ON e.JOB_ID = j.JOB_ID
+GROUP BY j.JOB_ROLE
+ORDER BY COUNT(*) DESC
+FETCH FIRST 1 ROW ONLY;
+
+8. Find the job name, employeename, job_min_ctc, job_max_ctc, emp_ctc. List only the employees who are getting salary which is not in the bracket of min_ctc and max_ctc for their job role.
+SELECT j.JOB_ROLE AS Job_Name,
+       e.EMP_NAME AS Employee_Name,
+       j.MIN_CTC AS Job_Min_CTC,
+       j.MAX_CTC AS Job_Max_CTC,
+       e.EMP_SAL AS Emp_CTC
+FROM Employee e
+INNER JOIN Jobs j ON e.JOB_ID = j.JOB_ID
+WHERE e.EMP_SAL NOT BETWEEN j.MIN_CTC AND j.MAX_CTC;
+
+
+9.What are the common job_roles we have between Accounting and IT departments
+SELECT DISTINCT j.JOB_ROLE
+FROM jobs J 
+INNER JOIN employee e ON e.JOB_ID = j.JOB_ID
+INNER JOIN dept d ON d.dept_ID = e.dept_ID
+WHERE d.DEPT_NAME IN ('Accounting', 'IT');
